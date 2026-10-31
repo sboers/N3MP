@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="nl" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N3MP – Lokale voorspellingen voor vogelaars en fotografen</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        nature: {
+                            900: '#0f1715',
+                            800: '#162520',
+                            700: '#1f362e',
+                            600: '#2d4d42',
+                            500: '#3d6d5c',
+                            400: '#5a9681',
+                            300: '#84b8a5',
+                            200: '#b7d6cb',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #162520; }
+        ::-webkit-scrollbar-thumb { background: #3d6d5c; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #5a9681; }
+    </style>
+</head>
+<body class="bg-nature-900 text-slate-100 min-h-screen flex flex-col selection:bg-nature-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="bg-nature-800/85 backdrop-blur-md border-b border-nature-700 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-nature-600 p-2.5 rounded-xl shadow-lg border border-nature-500/30">
+                    <i class="fa-solid fa-binoculars text-nature-200 text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                        N3MP <span class="text-xs px-2 py-0.5 rounded-full bg-nature-700 text-nature-300 font-medium border border-nature-600">Beta</span>
+                    </h1>
+                    <p class="text-xs text-nature-300 font-medium">Nieuwe Driemanspolder voor vogelaars & fotografen</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4 text-xs">
+                <div class="flex items-center gap-1.5 bg-nature-900/60 px-3 py-1.5 rounded-lg border border-nature-700">
+                    <i class="fa-solid fa-location-dot text-nature-400"></i>
+                    <span class="text-slate-300 font-mono">52.0668°N, 4.4317°E</span>
+                </div>
+                <div id="live-clock" class="font-mono bg-nature-900/60 px-3 py-1.5 rounded-lg border border-nature-700 text-nature-300">
+                    --:--:--
+                </div>
+                <button onclick="fetchAllData()" title="Ververs gegevens" class="bg-nature-600 hover:bg-nature-500 text-white p-2 rounded-lg transition-colors shadow">
+                    <i class="fa-solid fa-rotate-right" id="refresh-icon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container (Two Columns) -->
+    <main class="max-w-7xl mx-auto px-4 py-6 w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- ================= LEFT COLUMN (Span 5) ================= -->
+        <div class="lg:col-span-5 flex flex-col gap-6">
+
+            <!-- 1) Blok 'Nu' -->
+            <section class="bg-nature-800/90 rounded-2xl border border-nature-700/80 p-5 shadow-xl backdrop-blur-sm relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-nature-600/10 rounded-full blur-2xl pointer-events-none"></div>
+                
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-bolt text-nature-400"></i> Op dit moment
+                    </h2>
+                    <span id="update-time" class="text-xs text-nature-300 font-mono">Laden...</span>
+                </div>
+
+                <!-- Weer & Graden -->
+                <div class="bg-nature-900/60 rounded-xl p-4 border border-nature-700/50 flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-4">
+                        <div id="current-weather-icon-container" class="text-4xl text-nature-300 bg-nature-800 p-3 rounded-xl border border-nature-700">
+                            <i class="fa-solid fa-cloud-sun animate-pulse"></i>
+                        </div>
+                        <div>
+                            <div id="current-temp" class="text-3xl font-extrabold text-white">--°C</div>
+                            <div id="current-condition" class="text-sm text-nature-300 font-medium">Gegevens ophalen...</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-slate-400 mb-1">Gevoelstemperatuur</div>
+                        <div id="current-apparent-temp" class="text-lg font-bold text-slate-200">--°C</div>
+                    </div>
+                </div>
+
+                <!-- Regenvoorspelling Vandaag -->
+                <div id="rain-forecast-box" class="mb-4 p-3 rounded-xl border flex items-center gap-3 transition-colors bg-nature-900/40 border-nature-700/50">
+                    <div id="rain-icon" class="text-lg text-nature-400">
+                        <i class="fa-solid fa-cloud-rain"></i>
+                    </div>
+                    <div class="flex-grow">
+                        <div class="text-xs text-slate-400">Neerslagverwachting vandaag</div>
+                        <div id="rain-forecast-text" class="text-sm font-semibold text-slate-200">Berekenen of er regen valt...</div>
+                    </div>
+                </div>
+
+                <!-- Windrichting & Windkracht -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="bg-nature-900/80 rounded-xl p-3 border border-nature-700/50 flex flex-col justify-between relative overflow-hidden group">
+                        <div class="flex justify-between items-center mb-2 z-10">
+                            <span class="text-xs text-slate-300 font-medium flex items-center gap-1.5">
+                                <i class="fa-solid fa-compass text-nature-400"></i> Windrichting
+                            </span>
+                            <span id="wind-dir-deg" class="text-xs font-mono bg-nature-800 px-1.5 py-0.5 rounded text-nature-300">--°</span>
+                        </div>
+                        
+                        <!-- Kaart placeholder met eigen afbeelding -->
+                        <div id="map-placeholder" class="h-24 w-full bg-nature-950/80 rounded-lg relative overflow-hidden flex items-center justify-center border border-nature-800 bg-cover bg-center" style="background-image: url('/afbeeldingen/kaart.png');">
+                            
+                            <!-- Subtiele donkere overlay zodat de pijl goed zichtbaar blijft -->
+                            <div class="absolute inset-0 bg-nature-950/40"></div>
+
+                            <!-- Bewegende windvectoren -->
+                            <div id="wind-vectors" class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                                <div class="relative w-full h-full animate-pulse flex items-center justify-center">
+                                    <i id="wind-arrow-icon" class="fa-solid fa-location-arrow text-nature-300 text-2xl drop-shadow-[0_0_8px_rgba(132,184,165,0.8)] transition-transform duration-700" style="transform: rotate(0deg);"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="wind-dir-text" class="text-center text-xs text-nature-300 font-semibold mt-1 z-10">--</div>
+                    </div>
+
+                    <div class="bg-nature-900/80 rounded-xl p-3 border border-nature-700/50 flex flex-col justify-between">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs text-slate-300 font-medium flex items-center gap-1.5">
+                                <i class="fa-solid fa-wind text-nature-400"></i> Windkracht
+                            </span>
+                            <span id="wind-speed-ms" class="text-xs font-mono bg-nature-800 px-1.5 py-0.5 rounded text-nature-300">-- m/s</span>
+                        </div>
+                        <div class="flex flex-col items-center justify-center my-auto py-2">
+                            <div id="wind-beaufort-num" class="text-3xl font-extrabold text-white font-mono">Bft --</div>
+                            <div id="wind-strength-word" class="text-sm font-semibold text-nature-300 text-center mt-1">Berekenen...</div>
+                        </div>
+                        <div class="text-[10px] text-slate-400 text-center">Windstoten: <span id="wind-gusts" class="text-slate-300 font-mono">--</span></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2) Blok 'Aankomende uren' -->
+            <section class="bg-nature-800/90 rounded-2xl border border-nature-700/80 p-5 shadow-xl backdrop-blur-sm">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2 mb-3">
+                    <i class="fa-solid fa-clock text-nature-400"></i> Aankomende uren (Komende 5 uur)[cite: 1]
+                </h2>
+                <div class="overflow-y-auto max-h-[190px] pr-1 space-y-2" id="hourly-forecast-container">
+                    <div class="text-center py-6 text-slate-400 text-sm">Weersverwachting per uur laden...</div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- ================= RIGHT COLUMN (Span 7) ================= -->
+        <div class="lg:col-span-7 flex flex-col gap-6">
+
+            <!-- 1) Blok 'Seizoen' -->
+            <section class="bg-nature-800/90 rounded-2xl border border-nature-700/80 p-5 shadow-xl backdrop-blur-sm">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2 mb-4">
+                    <i class="fa-solid fa-calendar-days text-nature-400"></i> Seizoen
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Vogeltrek Miniblok -->
+                    <div id="migration-block" class="bg-nature-900/80 rounded-xl p-4 border border-nature-700/50 relative overflow-hidden transition-all duration-300">
+                        <div id="migration-overlay" class="absolute inset-0 bg-nature-950/70 backdrop-blur-[1px] z-10 flex items-center justify-center transition-opacity duration-300 opacity-0 pointer-events-none">
+                            <span class="bg-slate-800/90 text-slate-300 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-700 shadow">
+                                <i class="fa-solid fa-moon mr-1"></i> Niet actief
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <span class="text-xs text-slate-400 font-medium">Vogeltrek</span>
+                                <div id="migration-status" class="text-base font-bold text-white flex items-center gap-2 mt-0.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" id="migration-dot"></span>
+                                    <span id="migration-status-text">Actief</span>
+                                </div>
+                            </div>
+                            <div class="bg-nature-800 p-2 rounded-lg text-nature-300 border border-nature-700">
+                                <i class="fa-solid fa-feather-pointed"></i>
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-slate-300 mb-3" id="migration-desc">Voor- en najaar (maart/april & sept/okt).</p>
+
+                        <div class="mt-2">
+                            <div class="text-[10px] text-slate-400 mb-1 flex justify-between">
+                                <span>Jan</span><span>Trekintensiteit per maand</span><span>Dec</span>
+                            </div>
+                            <div id="migration-chart" class="flex items-end justify-between h-20 gap-1 pt-4 pb-1 px-1 bg-nature-950/60 rounded-lg border border-nature-800"></div>
+                        </div>
+                    </div>
+
+                    <!-- Broedseizoen Miniblok -->
+                    <div id="breeding-block" class="bg-nature-900/80 rounded-xl p-4 border border-nature-700/50 relative overflow-hidden transition-all duration-300">
+                        <div id="breeding-overlay" class="absolute inset-0 bg-nature-950/70 backdrop-blur-[1px] z-10 flex items-center justify-center transition-opacity duration-300 opacity-0 pointer-events-none">
+                            <span class="bg-slate-800/90 text-slate-300 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-700 shadow">
+                                <i class="fa-solid fa-snowflake mr-1"></i> Niet actief
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <span class="text-xs text-slate-400 font-medium">Broedseizoen</span>
+                                <div id="breeding-status" class="text-base font-bold text-white flex items-center gap-2 mt-0.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" id="breeding-dot"></span>
+                                    <span id="breeding-status-text">Actief</span>
+                                </div>
+                            </div>
+                            <div class="bg-nature-800 p-2 rounded-lg text-nature-300 border border-nature-700">
+                                <i class="fa-solid fa-egg"></i>
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-slate-300 mb-3" id="breeding-desc">15 maart t/m 15 juli (piek in lente).</p>
+
+                        <div class="mt-2">
+                            <div class="text-[10px] text-slate-400 mb-1 flex justify-between">
+                                <span>Jan</span><span>Broedactiviteit per maand</span><span>Dec</span>
+                            </div>
+                            <div id="breeding-chart" class="flex items-end justify-between h-20 gap-1 pt-4 pb-1 px-1 bg-nature-950/60 rounded-lg border border-nature-800"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2) Blok 'Daglicht & Fotografie' -->
+            <section class="bg-nature-800/90 rounded-2xl border border-nature-700/80 p-5 shadow-xl backdrop-blur-sm">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-sun text-nature-400"></i> Daglicht & Fotografie
+                    </h2>
+                    <div id="light-quality-badge" class="bg-nature-900 border border-nature-700 px-3 py-1 rounded-lg text-xs font-semibold text-nature-300 flex items-center gap-2">
+                        <i class="fa-solid fa-camera"></i> <span id="light-quality-text">Lichtkwaliteit berekenen...</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+                    <!-- Visuele Cirkelbaan met dynamische counter -->
+                    <div class="md:col-span-5 flex flex-col items-center justify-center bg-nature-900/80 p-4 rounded-xl border border-nature-700/50">
+                        <div class="relative w-44 h-44 flex items-center justify-center">
+                            <div class="absolute inset-0 rounded-full border-2 border-dashed border-nature-600/60 flex items-center justify-center overflow-hidden">
+                                <div class="absolute w-full h-[2px] bg-amber-400/90 z-10 shadow-[0_0_8px_rgba(251,191,36,0.6)]"></div>
+                                <div class="absolute top-0 w-full h-1/2 bg-amber-500/15 pointer-events-none"></div>
+                                <div class="absolute bottom-0 w-full h-1/2 bg-slate-950/70 pointer-events-none"></div>
+                            </div>
+
+                            <div id="celestial-body" class="absolute w-8 h-8 rounded-full bg-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.9)] flex items-center justify-center text-slate-950 font-bold text-xs transition-all duration-700 z-20" style="transform: translate(0px, 0px);">
+                                <i id="celestial-icon" class="fa-solid fa-sun text-amber-950"></i>
+                            </div>
+
+                            <div class="w-2 h-2 rounded-full bg-nature-500 z-0"></div>
+                        </div>
+
+                        <!-- Dynamische Zon Counter -->
+                        <div class="mt-3 text-center">
+                            <div id="sun-event-counter" class="text-xs font-bold font-mono text-amber-300 bg-nature-950/80 border border-nature-700/60 px-2.5 py-1 rounded-lg inline-block shadow">
+                                --:--:--
+                            </div>
+                        </div>
+
+                        <div class="text-[11px] text-slate-400 mt-2 text-center">Zonsopgang: <span id="sunrise-time" class="text-slate-200 font-mono font-bold">--:--</span> | Zonsondergang: <span id="sunset-time" class="text-slate-200 font-mono font-bold">--:--</span></div>
+                    </div>
+
+                    <!-- Ochtend & Avond Fotografie Uren -->
+                    <div class="md:col-span-7 flex flex-col gap-3">
+                        
+                        <!-- Ochtend Blok -->
+                        <div class="bg-nature-900/80 p-3 rounded-xl border border-nature-700/50">
+                            <div class="text-xs text-amber-300 font-semibold mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-sun-plant-wilt"></i> Ochtend (Gouden & Blauwe Uur)
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                <div class="bg-nature-800/60 p-2.5 rounded-lg border border-nature-700/40 flex flex-col justify-between">
+                                    <div>
+                                        <span class="text-amber-400 font-semibold block mb-0.5">Gouden Uur</span>
+                                        <span id="golden-morn-time" class="text-slate-200 font-mono block">--:-- - --:--</span>
+                                    </div>
+                                    <div class="mt-2 pt-2 border-t border-nature-700/50 text-[11px]">
+                                        <span id="golden-morn-countdown" class="font-mono font-bold text-amber-300 block">--:--:--</span>
+                                    </div>
+                                </div>
+                                <div class="bg-nature-800/60 p-2.5 rounded-lg border border-nature-700/40 flex flex-col justify-between">
+                                    <div>
+                                        <span class="text-sky-400 font-semibold block mb-0.5">Blauwe Uur</span>
+                                        <span id="blue-morn-time" class="text-slate-200 font-mono block">--:-- - --:--</span>
+                                    </div>
+                                    <div class="mt-2 pt-2 border-t border-nature-700/50 text-[11px]">
+                                        <span id="blue-morn-countdown" class="font-mono font-bold text-sky-300 block">--:--:--</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Avond Blok -->
+                        <div class="bg-nature-900/80 p-3 rounded-xl border border-nature-700/50">
+                            <div class="text-xs text-amber-400 font-semibold mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-moon"></i> Avond (Gouden & Blauwe Uur)
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                <div class="bg-nature-800/60 p-2.5 rounded-lg border border-nature-700/40 flex flex-col justify-between">
+                                    <div>
+                                        <span class="text-amber-400 font-semibold block mb-0.5">Gouden Uur</span>
+                                        <span id="golden-eve-time" class="text-slate-200 font-mono block">--:-- - --:--</span>
+                                    </div>
+                                    <div class="mt-2 pt-2 border-t border-nature-700/50 text-[11px]">
+                                        <span id="golden-eve-countdown" class="font-mono font-bold text-amber-300 block">--:--:--</span>
+                                    </div>
+                                </div>
+                                <div class="bg-nature-800/60 p-2.5 rounded-lg border border-nature-700/40 flex flex-col justify-between">
+                                    <div>
+                                        <span class="text-sky-400 font-semibold block mb-0.5">Blauwe Uur</span>
+                                        <span id="blue-eve-time" class="text-slate-200 font-mono block">--:-- - --:--</span>
+                                    </div>
+                                    <div class="mt-2 pt-2 border-t border-nature-700/50 text-[11px]">
+                                        <span id="blue-eve-countdown" class="font-mono font-bold text-sky-300 block">--:--:--</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-nature-800/60 border-t border-nature-700 py-4 mt-auto text-center text-xs text-slate-400">
+        <p>N3MP – Lokale voorspellingen voor de Nieuwe Driemanspolder. Ontwikkeld voor natuurliefhebbers, vogelspotters en fotografen.</p>
+    </footer>
+
+    <!-- JavaScript Logica -->
+    <script>
+        const LAT = 52.0667538;
+        const LON = 4.43173639576066;
+
+        let globalWeatherData = null;
+
+        function getWindDirectionText(degrees) {
+            const directions = ['Noord (N)', 'Noordnoordoost (NNE)', 'Noordoost (NE)', 'Oostnoordoost (ENE)', 'Oost (E)', 'Oostzuidoost (ESE)', 'Zuidoost (SE)', 'Zuidzuidoost (SSE)', 'Zuid (S)', 'Zuidzuidwest (SSW)', 'Zuidwest (SW)', 'Westzuidwest (WSW)', 'West (W)', 'Westnoordwest (WNW)', 'Noordwest (NW)', 'Noordnoordwest (NNW)'];
+            const index = Math.round((degrees % 360) / 22.5);
+            return directions[index % 16];
+        }
+
+        function getBeaufort(speedMs) {
+            let bft = 0;
+            if (speedMs < 0.3) bft = 0;
+            else if (speedMs < 1.6) bft = 1;
+            else if (speedMs < 3.4) bft = 2;
+            else if (speedMs < 5.5) bft = 3;
+            else if (speedMs < 8.0) bft = 4;
+            else if (speedMs < 10.8) bft = 5;
+            else if (speedMs < 13.9) bft = 6;
+            else if (speedMs < 17.2) bft = 7;
+            else if (speedMs < 20.8) bft = 8;
+            else if (speedMs < 24.5) bft = 9;
+            else if (speedMs < 28.4) bft = 10;
+            else if (speedMs < 32.6) bft = 11;
+            else bft = 12;
+
+            let word = "Stilte";
+            if (bft >= 1 && bft <= 3) word = "Zwakke wind";
+            else if (bft === 4 || bft === 5) word = "Matige wind";
+            else if (bft === 6) word = "Vrij krachtige wind";
+            else if (bft === 7) word = "Krachtige wind";
+            else if (bft >= 8) word = "Stormachtige wind";
+
+            return { bft, word };
+        }
+
+        function getWeatherDescription(code) {
+            const codes = {
+                0: { text: "Onbewolkt", icon: "fa-sun text-amber-400" },
+                1: { text: "Licht bewolkt", icon: "fa-cloud-sun text-amber-300" },
+                2: { text: "Half bewolkt", icon: "fa-cloud-sun text-slate-300" },
+                3: { text: "Zwaar bewolkt", icon: "fa-cloud text-slate-400" },
+                45: { text: "Mist", icon: "fa-smog text-slate-400" },
+                48: { text: "Aanvriezende mist", icon: "fa-smog text-slate-400" },
+                51: { text: "Lichte motregen", icon: "fa-cloud-rain text-sky-400" },
+                53: { text: "Motregen", icon: "fa-cloud-rain text-sky-400" },
+                55: { text: "Dichte motregen", icon: "fa-cloud-rain text-sky-500" },
+                61: { text: "Lichte regen", icon: "fa-cloud-rain text-sky-400" },
+                63: { text: "Regen", icon: "fa-cloud-showers-heavy text-sky-500" },
+                65: { text: "Zware regen", icon: "fa-cloud-showers-water text-blue-500" },
+                71: { text: "Lichte sneeuw", icon: "fa-snowflake text-sky-200" },
+                95: { text: "Onweer", icon: "fa-cloud-bolt text-amber-400" }
+            };
+            return codes[code] || { text: "Wisselend", icon: "fa-cloud text-slate-400" };
+        }
+
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('live-clock').innerText = now.toLocaleTimeString('nl-NL');
+
+            if (globalWeatherData) {
+                updateCountdownsAndSunPosition(globalWeatherData);
+            }
+        }, 1000);
+
+        async function fetchAllData() {
+            const refreshIcon = document.getElementById('refresh-icon');
+            refreshIcon.classList.add('fa-spin');
+
+            try {
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_direction_10m&daily=sunrise,sunset,precipitation_sum&timezone=Europe/Amsterdam`;
+
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Netwerkrespons mislukt');
+                const data = await response.json();
+                globalWeatherData = data;
+
+                updateCurrentWeather(data);
+                updateHourlyForecast(data);
+                updateSeasonBlocks();
+                updateCountdownsAndSunPosition(data);
+
+                document.getElementById('update-time').innerText = "Laatste update: " + new Date().toLocaleTimeString('nl-NL', {hour: '2-digit', minute:'2-digit'});
+            } catch (error) {
+                console.error("Fout bij ophalen weerdata:", error);
+                document.getElementById('current-condition').innerText = "Niet beschikbaar (Fout bij laden)";
+            } finally {
+                setTimeout(() => refreshIcon.classList.remove('fa-spin'), 600);
+            }
+        }
+
+        function updateCurrentWeather(data) {
+            const current = data.current;
+            const daily = data.daily;
+
+            document.getElementById('current-temp').innerText = `${Math.round(current.temperature_2m)}°C`;
+            document.getElementById('current-apparent-temp').innerText = `${Math.round(current.apparent_temperature)}°C`;
+
+            const weatherInfo = getWeatherDescription(current.weather_code);
+            document.getElementById('current-condition').innerText = weatherInfo.text;
+            document.getElementById('current-weather-icon-container').innerHTML = `<i class="fa-solid ${weatherInfo.icon}"></i>`;
+
+            const todayRainSum = daily.precipitation_sum && daily.precipitation_sum[0] ? daily.precipitation_sum[0] : 0;
+            const rainBox = document.getElementById('rain-forecast-box');
+            const rainText = document.getElementById('rain-forecast-text');
+            const rainIcon = document.getElementById('rain-icon');
+
+            if (todayRainSum > 0.5) {
+                rainBox.className = "mb-4 p-3 rounded-xl border flex items-center gap-3 transition-colors bg-sky-950/40 border-sky-700/60";
+                rainText.innerText = `Kans op regen vandaag (${todayRainSum} mm verwacht)`;
+                rainIcon.innerHTML = `<i class="fa-solid fa-cloud-rain text-sky-400"></i>`;
+            } else {
+                rainBox.className = "mb-4 p-3 rounded-xl border flex items-center gap-3 transition-colors bg-emerald-950/30 border-emerald-700/40";
+                rainText.innerText = `Weinig tot geen kans op regen vandaag (${todayRainSum} mm verwacht)`;
+                rainIcon.innerHTML = `<i class="fa-solid fa-cloud-sun text-emerald-400"></i>`;
+            }
+
+            const windDir = current.wind_direction_10m;
+            document.getElementById('wind-dir-deg').innerText = `${windDir}°`;
+            document.getElementById('wind-dir-text').innerText = getWindDirectionText(windDir);
+            
+            // Pijl rotatie gecorrigeerd (-135 graden zodat standaard icoon correct uitlijnt)
+            const arrowIcon = document.getElementById('wind-arrow-icon');
+            arrowIcon.style.transform = `rotate(${windDir + 180 - 45}deg)`;
+
+            const windSpeed = current.wind_speed_10m;
+            document.getElementById('wind-speed-ms').innerText = `${windSpeed.toFixed(1)} m/s`;
+            const bftData = getBeaufort(windSpeed);
+            document.getElementById('wind-beaufort-num').innerText = `Bft ${bftData.bft}`;
+            document.getElementById('wind-strength-word').innerText = bftData.word;
+            document.getElementById('wind-gusts').innerText = current.wind_gusts_10m ? `${current.wind_gusts_10m} m/s` : 'N.v.t.';
+        }
+
+        function updateHourlyForecast(data) {
+            const hourly = data.hourly;
+            const container = document.getElementById('hourly-forecast-container');
+            container.innerHTML = '';
+
+            const now = new Date();
+            let count = 0;
+
+            for (let i = 0; i < hourly.time.length; i++) {
+                const forecastTime = new Date(hourly.time[i]);
+                
+                if (forecastTime >= now && count < 5) {
+                    count++;
+                    const timeStr = forecastTime.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+                    const temp = Math.round(hourly.temperature_2m[i]);
+                    const pop = hourly.precipitation_probability ? hourly.precipitation_probability[i] : 0;
+                    const wCode = hourly.weather_code[i];
+                    const wDesc = getWeatherDescription(wCode);
+                    const windS = hourly.wind_speed_10m[i];
+
+                    const row = document.createElement('div');
+                    row.className = "flex items-center justify-between p-2.5 rounded-xl bg-nature-900/60 border border-nature-700/40 text-xs hover:bg-nature-900 transition-colors";
+                    row.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="font-mono font-bold text-slate-300 w-12">${timeStr}</span>
+                            <i class="fa-solid ${wDesc.icon} text-base w-6 text-center"></i>
+                            <span class="text-slate-200 font-medium">${wDesc.text}</span>
+                        </div>
+                        <div class="flex items-center gap-4 text-right">
+                            <span class="text-sky-300"><i class="fa-solid fa-droplet text-[10px] mr-1"></i>${pop}%</span>
+                            <span class="text-slate-300 font-mono">${windS.toFixed(1)} m/s</span>
+                            <span class="font-bold text-white w-8 text-right">${temp}°C</span>
+                        </div>
+                    `;
+                    container.appendChild(row);
+                }
+            }
+
+            if (count === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-slate-400 text-sm">Geen uren beschikbaar.</div>`;
+            }
+        }
+
+        function updateSeasonBlocks() {
+            const now = new Date();
+            const currentMonth = now.getMonth();
+
+            const isMigrationActive = (currentMonth >= 2 && currentMonth <= 3) || (currentMonth >= 8 && currentMonth <= 10);
+            const migStatusDot = document.getElementById('migration-dot');
+            const migStatusText = document.getElementById('migration-status-text');
+            const migOverlay = document.getElementById('migration-overlay');
+            const migBlock = document.getElementById('migration-block');
+
+            if (isMigrationActive) {
+                migStatusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
+                migStatusText.innerText = "Actief";
+                migOverlay.style.opacity = "0";
+                migOverlay.style.pointerEvents = "none";
+                migBlock.classList.remove('opacity-75');
+            } else {
+                migStatusDot.className = "w-2.5 h-2.5 rounded-full bg-slate-500";
+                migStatusText.innerText = "Niet actief";
+                migOverlay.style.opacity = "1";
+                migOverlay.style.pointerEvents = "auto";
+                migBlock.classList.add('opacity-75');
+            }
+
+            const migPeaks = [20, 30, 80, 90, 30, 15, 10, 35, 95, 100, 60, 25];
+            const migChart = document.getElementById('migration-chart');
+            migChart.innerHTML = '';
+
+            migPeaks.forEach((val, idx) => {
+                const isCurrent = (idx === currentMonth);
+                const colWrapper = document.createElement('div');
+                colWrapper.className = "flex-1 flex flex-col items-center h-full justify-end relative group";
+                
+                if (isCurrent) {
+                    const arrow = document.createElement('div');
+                    arrow.className = "absolute -top-3 text-nature-300 text-[10px] animate-bounce font-bold";
+                    arrow.innerHTML = `<i class="fa-solid fa-chevron-down"></i>`;
+                    colWrapper.appendChild(arrow);
+                }
+
+                const bar = document.createElement('div');
+                bar.className = `w-full rounded-t transition-all ${isCurrent ? 'bg-nature-400 ring-2 ring-nature-300' : 'bg-nature-700 hover:bg-nature-600'}`;
+                bar.style.height = `${val}%`;
+                colWrapper.appendChild(bar);
+                migChart.appendChild(colWrapper);
+            });
+
+            const isBreedingActive = (currentMonth >= 2 && currentMonth <= 6);
+            const breedStatusDot = document.getElementById('breeding-dot');
+            const breedStatusText = document.getElementById('breeding-status-text');
+            const breedOverlay = document.getElementById('breeding-overlay');
+            const breedBlock = document.getElementById('breeding-block');
+
+            if (isBreedingActive) {
+                breedStatusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
+                breedStatusText.innerText = "Actief";
+                breedOverlay.style.opacity = "0";
+                breedOverlay.style.pointerEvents = "none";
+                breedBlock.classList.remove('opacity-75');
+            } else {
+                breedStatusDot.className = "w-2.5 h-2.5 rounded-full bg-slate-500";
+                breedStatusText.innerText = "Niet actief";
+                breedOverlay.style.opacity = "1";
+                breedOverlay.style.pointerEvents = "auto";
+                breedBlock.classList.add('opacity-75');
+            }
+
+            const breedPeaks = [5, 10, 50, 95, 100, 85, 30, 10, 5, 5, 5, 5];
+            const breedChart = document.getElementById('breeding-chart');
+            breedChart.innerHTML = '';
+
+            breedPeaks.forEach((val, idx) => {
+                const isCurrent = (idx === currentMonth);
+                const colWrapper = document.createElement('div');
+                colWrapper.className = "flex-1 flex flex-col items-center h-full justify-end relative group";
+                
+                if (isCurrent) {
+                    const arrow = document.createElement('div');
+                    arrow.className = "absolute -top-3 text-nature-300 text-[10px] animate-bounce font-bold";
+                    arrow.innerHTML = `<i class="fa-solid fa-chevron-down"></i>`;
+                    colWrapper.appendChild(arrow);
+                }
+
+                const bar = document.createElement('div');
+                bar.className = `w-full rounded-t transition-all ${isCurrent ? 'bg-nature-400 ring-2 ring-nature-300' : 'bg-nature-700 hover:bg-nature-600'}`;
+                bar.style.height = `${val}%`;
+                colWrapper.appendChild(bar);
+                breedChart.appendChild(colWrapper);
+            });
+        }
+
+        function formatCountdown(ms) {
+            let totalSecs = Math.floor(ms / 1000);
+            let hours = Math.floor(totalSecs / 3600);
+            let mins = Math.floor((totalSecs % 3600) / 60);
+            let secs = totalSecs % 60;
+            return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function getSmartCountdown(nowTime, mornStart, mornEnd, eveStart, eveEnd) {
+            if (nowTime < mornStart) {
+                return "Nog " + formatCountdown(mornStart - nowTime);
+            } else if (nowTime >= mornStart && nowTime <= mornEnd) {
+                return "Nu bezig!";
+            } else if (nowTime > mornEnd && nowTime < eveStart) {
+                return "Nog " + formatCountdown(eveStart - nowTime) + " (tot avond)";
+            } else if (nowTime >= eveStart && nowTime <= eveEnd) {
+                return "Nu bezig (avond)!";
+            } else {
+                const nextMornStart = mornStart + 24 * 60 * 60 * 1000;
+                return "Nog " + formatCountdown(nextMornStart - nowTime);
+            }
+        }
+
+        function updateCountdownsAndSunPosition(data) {
+            const daily = data.daily;
+            const sunriseStr = daily.sunrise[0];
+            const sunsetStr = daily.sunset[0];
+
+            document.getElementById('sunrise-time').innerText = formatTime(sunriseStr);
+            document.getElementById('sunset-time').innerText = formatTime(sunsetStr);
+
+            const sunriseDate = new Date(sunriseStr);
+            const sunsetDate = new Date(sunsetStr);
+            const now = new Date();
+            const nowTime = now.getTime();
+
+            const blueMornStart = new Date(sunriseDate.getTime() - 40 * 60 * 1000);
+            const blueMornEnd = new Date(sunriseDate.getTime());
+            const goldenMornStart = new Date(sunriseDate.getTime());
+            const goldenMornEnd = new Date(sunriseDate.getTime() + 60 * 60 * 1000);
+
+            const goldenEveStart = new Date(sunsetDate.getTime() - 60 * 60 * 1000);
+            const goldenEveEnd = new Date(sunsetDate.getTime());
+            const blueEveStart = new Date(sunsetDate.getTime());
+            const blueEveEnd = new Date(sunsetDate.getTime() + 40 * 60 * 1000);
+
+            document.getElementById('blue-morn-time').innerText = `${formatTime(blueMornStart)} - ${formatTime(blueMornEnd)}`;
+            document.getElementById('golden-morn-time').innerText = `${formatTime(goldenMornStart)} - ${formatTime(goldenMornEnd)}`;
+            document.getElementById('golden-eve-time').innerText = `${formatTime(goldenEveStart)} - ${formatTime(goldenEveEnd)}`;
+            document.getElementById('blue-eve-time').innerText = `${formatTime(blueEveStart)} - ${formatTime(blueEveEnd)}`;
+
+            document.getElementById('blue-morn-countdown').innerText = getSmartCountdown(nowTime, blueMornStart.getTime(), blueMornEnd.getTime(), blueEveStart.getTime(), blueEveEnd.getTime());
+            document.getElementById('golden-morn-countdown').innerText = getSmartCountdown(nowTime, goldenMornStart.getTime(), goldenMornEnd.getTime(), blueEveStart.getTime(), blueEveEnd.getTime());
+            document.getElementById('golden-eve-countdown').innerText = getSmartCountdown(nowTime, goldenEveStart.getTime(), goldenEveEnd.getTime(), goldenEveStart.getTime() + 24*3600*1000, goldenEveEnd.getTime() + 24*3600*1000);
+            document.getElementById('blue-eve-countdown').innerText = getSmartCountdown(nowTime, blueEveStart.getTime(), blueEveEnd.getTime(), blueEveStart.getTime() + 24*3600*1000, blueEveEnd.getTime() + 24*3600*1000);
+
+            const sunCounter = document.getElementById('sun-event-counter');
+            const riseTime = sunriseDate.getTime();
+            const setTime = sunsetDate.getTime();
+
+            if (nowTime >= riseTime && nowTime <= setTime) {
+                const remaining = setTime - nowTime;
+                sunCounter.innerHTML = `<i class="fa-solid fa-sunset mr-1.5 text-amber-400"></i>${formatCountdown(remaining)} tot zonsondergang`;
+            } else {
+                let nextSunrise = riseTime;
+                if (nowTime > setTime) {
+                    nextSunrise = riseTime + 24 * 60 * 60 * 1000;
+                }
+                const remaining = nextSunrise - nowTime;
+                sunCounter.innerHTML = `<i class="fa-solid fa-sunrise mr-1.5 text-amber-300"></i>${formatCountdown(remaining)} tot zonsopgang`;
+            }
+
+            const celestialBody = document.getElementById('celestial-body');
+            const celestialIcon = document.getElementById('celestial-icon');
+
+            const radius = 68;
+            let angle = 0;
+            let isDay = false;
+
+            if (nowTime >= riseTime && nowTime <= setTime) {
+                isDay = true;
+                const dayDuration = setTime - riseTime;
+                const elapsedDay = nowTime - riseTime;
+                const dayProgress = elapsedDay / dayDuration;
+                angle = Math.PI * (1 - dayProgress);
+            } else {
+                isDay = false;
+                let nightDuration, elapsedNight, nightProgress;
+                if (nowTime > setTime) {
+                    const nextSunrise = new Date(riseTime + 24 * 60 * 60 * 1000).getTime();
+                    nightDuration = nextSunrise - setTime;
+                    elapsedNight = nowTime - setTime;
+                    nightProgress = elapsedNight / nightDuration;
+                } else {
+                    const prevSunset = new Date(setTime - 24 * 60 * 60 * 1000).getTime();
+                    nightDuration = riseTime - prevSunset;
+                    elapsedNight = nowTime - prevSunset;
+                    nightProgress = elapsedNight / nightDuration;
+                }
+                angle = 0 - (nightProgress * Math.PI);
+            }
+
+            const x = Math.cos(angle) * radius;
+            const y = -Math.sin(angle) * radius;
+
+            celestialBody.style.transform = `translate(${x}px, ${y}px)`;
+
+            if (isDay) {
+                celestialBody.className = "absolute w-8 h-8 rounded-full bg-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.9)] flex items-center justify-center text-slate-950 font-bold text-xs transition-all duration-700 z-20";
+                celestialIcon.className = "fa-solid fa-sun text-amber-950";
+            } else {
+                celestialBody.className = "absolute w-8 h-8 rounded-full bg-slate-300 shadow-[0_0_12px_rgba(203,213,225,0.7)] flex items-center justify-center text-slate-950 font-bold text-xs transition-all duration-700 z-20";
+                celestialIcon.className = "fa-solid fa-moon text-slate-900";
+            }
+
+            const wCode = data.current.weather_code;
+            const qualityText = document.getElementById('light-quality-text');
+            if (wCode === 0 || wCode === 1) {
+                qualityText.innerText = "Uitstekend (Helder / Scherpe schaduwen)";
+            } else if (wCode === 2 || wCode === 3) {
+                qualityText.innerText = "Zeer Goed (Zachte egale bewolking / Diffuus licht)";
+            } else if (wCode >= 51) {
+                qualityText.innerText = "Matig (Neerslag / Donkere omstandigheden)";
+            } else {
+                qualityText.innerText = "Goed voor natuurfotografie";
+            }
+        }
+
+        window.onload = function() {
+            fetchAllData();
+        };
+    </script>
+</body>
+</html>
